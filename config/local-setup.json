@@ -1,0 +1,18 @@
+{
+  "productName": "Rita Massas",
+  "launcherTitle": "Rita Massas",
+  "port": 3001,
+  "minNodeMajor": 24,
+  "preferredNodeVersion": "24.11.1",
+  "launcherPath": "/launcher",
+  "autoOpenBrowser": true,
+  "showQrCode": true,
+  "createDesktopShortcut": true,
+  "desktopShortcutName": "Rita Massas",
+  "logoPath": "assets/images/brand-chef-hat.png",
+  "shortcutIconPath": "assets/images/chef-hat-shortcut.ico",
+  "firewall": {
+    "enabled": true,
+    "ruleName": "Rita Massas 3001"
+  }
+}

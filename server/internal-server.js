@@ -4,10 +4,39 @@ const os = require('node:os')
 const path = require('node:path')
 
 const { createDataStore } = require('./data-store')
+const { createLauncherHtml } = require('./launcher-panel')
 
 const ROOT_DIR = path.resolve(__dirname, '..')
+const LOCAL_SETUP_PATH = path.join(ROOT_DIR, 'config', 'local-setup.json')
+const LOCAL_SETUP_DEFAULTS = {
+  productName: 'Rita Massas',
+  launcherTitle: 'Rita Massas',
+  port: 3001,
+  launcherPath: '/launcher',
+  logoPath: 'assets/images/brand-chef-hat.png',
+  showQrCode: true,
+}
+
+function readLocalSetup() {
+  if (!fs.existsSync(LOCAL_SETUP_PATH)) {
+    return { ...LOCAL_SETUP_DEFAULTS }
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(LOCAL_SETUP_PATH, 'utf-8'))
+    return {
+      ...LOCAL_SETUP_DEFAULTS,
+      ...parsed,
+    }
+  } catch (error) {
+    console.warn('ritamassas: falha ao ler config/local-setup.json', error)
+    return { ...LOCAL_SETUP_DEFAULTS }
+  }
+}
+
+const localSetup = readLocalSetup()
 const HOST = process.env.HOST || '0.0.0.0'
-const PORT = Number(process.env.PORT || 3001)
+const PORT = Number(process.env.PORT || localSetup.port || 3001)
 const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.join(ROOT_DIR, 'data')
@@ -146,15 +175,35 @@ function resolveStaticAsset(requestPath) {
 
 function getServerUrls() {
   const urls = [`http://localhost:${PORT}`]
+  const virtualMacPattern = /^(?:0a:00:27|08:00:27|00:05:69|00:0c:29|00:1c:14|00:50:56|00:15:5d)/i
 
-  for (const addresses of Object.values(os.networkInterfaces())) {
+  for (const [interfaceName, addresses] of Object.entries(os.networkInterfaces())) {
+    if (/virtual|vmware|vethernet|hyper-v|host-only|loopback/i.test(interfaceName)) {
+      continue
+    }
+
     for (const address of addresses ?? []) {
       if (address.family !== 'IPv4' || address.internal) continue
+      if (address.mac && virtualMacPattern.test(address.mac)) continue
       urls.push(`http://${address.address}:${PORT}`)
     }
   }
 
   return Array.from(new Set(urls))
+}
+
+function getLauncherInfo() {
+  const urls = getServerUrls()
+  const localUrl = urls.find((url) => url.includes('localhost')) ?? `http://localhost:${PORT}`
+  const networkUrls = urls.filter((url) => !url.includes('localhost'))
+
+  return {
+    productName: localSetup.productName,
+    launcherTitle: localSetup.launcherTitle,
+    localUrl,
+    networkUrls,
+    launcherUrl: `${localUrl}${localSetup.launcherPath}`,
+  }
 }
 
 const server = http.createServer(async (req, res) => {
@@ -176,6 +225,11 @@ const server = http.createServer(async (req, res) => {
   try {
     if (pathname === '/api/health' && req.method === 'GET') {
       sendJson(req, res, 200, { ok: true })
+      return
+    }
+
+    if (pathname === '/api/launcher-info' && req.method === 'GET') {
+      sendJson(req, res, 200, getLauncherInfo())
       return
     }
 
@@ -216,6 +270,26 @@ const server = http.createServer(async (req, res) => {
       }
 
       serveFile(req, res, filePath)
+      return
+    }
+
+    if (pathname === localSetup.launcherPath && req.method === 'GET') {
+      const launcherInfo = getLauncherInfo()
+      const html = await createLauncherHtml({
+        productName: localSetup.productName,
+        launcherTitle: localSetup.launcherTitle,
+        localUrl: launcherInfo.localUrl,
+        networkUrls: launcherInfo.networkUrls,
+        launcherUrl: launcherInfo.launcherUrl,
+        logoPath: path.join(ROOT_DIR, localSetup.logoPath),
+        showQrCode: localSetup.showQrCode,
+      })
+
+      setCorsHeaders(req, res)
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+      })
+      res.end(html)
       return
     }
 

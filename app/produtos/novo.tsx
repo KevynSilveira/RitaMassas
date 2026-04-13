@@ -72,13 +72,25 @@ export default function NovoProdutoScreen() {
   const save = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      Alert.alert('Nome', 'Informe o nome da massa.');
+      setFeedback({
+        title: 'Nome',
+        message: 'Informe o nome da massa.',
+        secondaryAction: {
+          label: 'OK',
+        },
+      });
       return;
     }
 
     const parsedPrice = parseProductPrice(price);
     if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
-      Alert.alert('Valor', 'Informe um valor valido maior que zero.');
+      setFeedback({
+        title: 'Valor',
+        message: 'Informe o valor da massa. O campo aceita somente valores maiores que zero.',
+        secondaryAction: {
+          label: 'OK',
+        },
+      });
       return;
     }
 
@@ -109,7 +121,13 @@ export default function NovoProdutoScreen() {
       });
     } catch (error) {
       console.error(error);
-      Alert.alert('Erro', 'Nao foi possivel salvar a massa.');
+      setFeedback({
+        title: 'Erro',
+        message: 'Nao foi possivel salvar a massa.',
+        secondaryAction: {
+          label: 'OK',
+        },
+      });
     } finally {
       setSaving(false);
     }
@@ -152,9 +170,9 @@ export default function NovoProdutoScreen() {
             value={price}
             onChangeText={(value) => setPrice(maskProductPriceInput(value))}
             keyboardType="decimal-pad"
-            placeholder="25,00"
+            placeholder="0,00"
             autoCapitalize="none"
-            hint="Use o valor final de venda. Exemplo: 25,00."
+            hint="O valor e formatado automaticamente. Exemplo: 25,00."
             style={styles.fieldNoMargin}
           />
         </FormPanel>

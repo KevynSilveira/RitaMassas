@@ -67,7 +67,7 @@ export function validateCustomerPhone(value: string): string | null {
   const digits = getPhoneDigits(value);
 
   if (!digits) {
-    return null;
+    return 'Informe um telefone com DDD.';
   }
 
   if (digits.length < 10) {
@@ -76,6 +76,51 @@ export function validateCustomerPhone(value: string): string | null {
 
   if (digits.length > 11) {
     return 'O telefone aceita no maximo 11 digitos com DDD.';
+  }
+
+  return null;
+}
+
+export function validateCustomerAddress(
+  value: CustomerAddressFields
+): string | null {
+  const missingFields = ADDRESS_FIELD_META.filter(
+    ({ key }) => key !== 'complement' && !trimValue(value[key])
+  ).map(({ label }) => label.toLowerCase());
+
+  if (missingFields.length === 0) {
+    return null;
+  }
+
+  return `Preencha o endereco com ${missingFields.join(', ')}.`;
+}
+
+export function validateCustomerRequiredFields(
+  name: string,
+  phone: string,
+  address: CustomerAddressFields
+): { title: string; message: string } | null {
+  if (!trimValue(name)) {
+    return {
+      title: 'Nome',
+      message: 'Informe o nome do cliente.',
+    };
+  }
+
+  const phoneError = validateCustomerPhone(phone);
+  if (phoneError) {
+    return {
+      title: 'Telefone',
+      message: phoneError,
+    };
+  }
+
+  const addressError = validateCustomerAddress(address);
+  if (addressError) {
+    return {
+      title: 'Endereco',
+      message: addressError,
+    };
   }
 
   return null;

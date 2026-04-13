@@ -1,4 +1,7 @@
-import { ActionFeedbackModal } from '@/components/ui/ActionFeedbackModal';
+import {
+  ActionFeedbackModal,
+  type ActionFeedbackButton,
+} from '@/components/ui/ActionFeedbackModal';
 import { AppScreen } from '@/components/ui/AppScreen';
 import { CalendarPickerModal } from '@/components/ui/CalendarPickerModal';
 import { Field } from '@/components/ui/Field';
@@ -54,8 +57,14 @@ export default function NovoPedidoScreen() {
   const [delivery, setDelivery] = useState(() => createDefaultDelivery());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [successOpen, setSuccessOpen] = useState(false);
-  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<{
+    title: string;
+    message: string;
+    primaryAction?: ActionFeedbackButton;
+    secondaryAction?: ActionFeedbackButton;
+  } | null>(null);
+
+  const closeFeedback = () => setFeedback(null);
 
   const loadLists = useCallback(async () => {
     const [customerRows, productRows] = await Promise.all([
@@ -132,13 +141,18 @@ export default function NovoPedidoScreen() {
     setDelivery(createDefaultDelivery());
     customerPicker.clear();
     productPicker.clear();
-    setCreatedOrderId(null);
   };
 
   const submit = async () => {
     const validationError = validateOrderBeforeSave(customerId, lines, delivery);
     if (validationError) {
-      Alert.alert(validationError.title, validationError.message);
+      setFeedback({
+        title: validationError.title,
+        message: validationError.message,
+        secondaryAction: {
+          label: 'OK',
+        },
+      });
       return;
     }
 
@@ -156,8 +170,18 @@ export default function NovoPedidoScreen() {
         lines
       );
       refresh();
-      setCreatedOrderId(id);
-      setSuccessOpen(true);
+      setFeedback({
+        title: 'Pedido criado',
+        message: 'O pedido foi salvo e os dados da operacao ja foram atualizados.',
+        primaryAction: {
+          label: 'Ver pedido',
+          onPress: () => router.replace(`/pedido/${id}`),
+        },
+        secondaryAction: {
+          label: 'OK',
+          onPress: resetForm,
+        },
+      });
     } catch (error) {
       console.error(error);
       const message =
@@ -551,25 +575,12 @@ export default function NovoPedidoScreen() {
       </Modal>
 
       <ActionFeedbackModal
-        visible={successOpen}
-        title="Pedido criado"
-        message="O pedido foi salvo e os dados da operacao ja foram atualizados."
-        onClose={() => {
-          setSuccessOpen(false);
-          resetForm();
-        }}
-        primaryAction={{
-          label: 'Ver pedido',
-          onPress: () => {
-            if (createdOrderId != null) {
-              router.replace(`/pedido/${createdOrderId}`);
-            }
-          },
-        }}
-        secondaryAction={{
-          label: 'OK',
-          onPress: resetForm,
-        }}
+        visible={feedback != null}
+        title={feedback?.title ?? ''}
+        message={feedback?.message ?? ''}
+        onClose={closeFeedback}
+        primaryAction={feedback?.primaryAction}
+        secondaryAction={feedback?.secondaryAction}
       />
     </AppScreen>
   );

@@ -151,10 +151,14 @@ export default function EditarPedidoScreen() {
 
   const removeItemLine = (index: number) => {
     if (lines.length === 1) {
-      Alert.alert(
-        'Itens',
-        'O pedido precisa manter pelo menos um produto. Adicione outro item antes de remover este.'
-      );
+      setFeedback({
+        title: 'Itens',
+        message:
+          'O pedido precisa manter pelo menos um produto. Adicione outro item antes de remover este.',
+        secondaryAction: {
+          label: 'OK',
+        },
+      });
       return;
     }
 
@@ -168,7 +172,13 @@ export default function EditarPedidoScreen() {
 
     const validationError = validateOrderBeforeSave(order.customer_id, lines, delivery);
     if (validationError) {
-      Alert.alert(validationError.title, validationError.message);
+      setFeedback({
+        title: validationError.title,
+        message: validationError.message,
+        secondaryAction: {
+          label: 'OK',
+        },
+      });
       return;
     }
 

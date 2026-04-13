@@ -13,15 +13,16 @@ import { formatCustomerAddress, formatCustomerPhone } from '@/lib/customerFields
 import {
   getCustomer,
   getOrderWithDetails,
+  listProducts,
   updateOrderMeta,
 } from '@/lib/database';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import { isFinalOrderStatus, isOrderOverdue } from '@/lib/orderUtils';
 import { getOrderStatusTone } from '@/lib/orderStatusTone';
-import type { CustomerRow, OrderStatus } from '@/types/models';
+import type { CustomerRow, OrderStatus, ProductRow } from '@/types/models';
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from '@/types/models';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -42,6 +43,7 @@ export default function PedidoDetalheScreen() {
     ReturnType<typeof getOrderWithDetails>
   > | null>(null);
   const [customer, setCustomer] = useState<CustomerRow | null>(null);
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusOpen, setStatusOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
@@ -64,8 +66,13 @@ export default function PedidoDetalheScreen() {
 
     setLoading(true);
     try {
-      const nextOrder = await getOrderWithDetails(orderId);
+      const [nextOrder, productRows] = await Promise.all([
+        getOrderWithDetails(orderId),
+        listProducts(),
+      ]);
+
       setOrder(nextOrder);
+      setProducts(productRows);
       if (!nextOrder) {
         setCustomer(null);
         return;
@@ -83,6 +90,13 @@ export default function PedidoDetalheScreen() {
   }, [load]);
 
   const overdue = order ? isOrderOverdue(order) : false;
+  const productPhotoByName = useMemo(
+    () =>
+      new Map(
+        products.map((product) => [product.name.trim().toLowerCase(), product.photo_uri])
+      ),
+    [products]
+  );
 
   const syncOrder = useCallback(async () => {
     refresh();
@@ -349,7 +363,11 @@ export default function PedidoDetalheScreen() {
                   ]}>
                   <View style={styles.itemMain}>
                     <ProductThumbnail
-                      photoUri={item.photo_uri}
+                      photoUri={
+                        item.photo_uri ??
+                        productPhotoByName.get(item.product_name.trim().toLowerCase()) ??
+                        null
+                      }
                       size={isDesktop ? 54 : 48}
                     />
 

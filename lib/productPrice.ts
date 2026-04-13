@@ -1,22 +1,25 @@
 export function maskProductPriceInput(value: string) {
-  const cleaned = value.replace(/[^\d,.-]/g, '').replace(/\./g, ',');
-  const negative = cleaned.startsWith('-');
-  const unsigned = negative ? cleaned.slice(1) : cleaned;
-  const [integerPart, ...decimalParts] = unsigned.split(',');
-  const decimals = decimalParts.join('').slice(0, 2);
-  const normalizedInteger = integerPart.replace(/^0+(?=\d)/, '') || integerPart;
-  const formatted =
-    decimals.length > 0
-      ? `${normalizedInteger || '0'},${decimals}`
-      : normalizedInteger;
+  const digits = value.replace(/\D/g, '');
 
-  return negative ? `-${formatted}` : formatted;
+  if (!digits) {
+    return '';
+  }
+
+  const normalized = digits.padStart(3, '0');
+  const integerPart = normalized.slice(0, -2).replace(/^0+(?=\d)/, '') || '0';
+  const decimalPart = normalized.slice(-2);
+  const formattedInteger = Number(integerPart).toLocaleString('pt-BR');
+
+  return `${formattedInteger},${decimalPart}`;
 }
 
 export function parseProductPrice(value: string) {
-  return parseFloat(value.replace(',', '.'));
+  return parseFloat(value.replace(/\./g, '').replace(',', '.'));
 }
 
 export function formatProductPriceInput(value: number) {
-  return value.toFixed(2).replace('.', ',');
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }

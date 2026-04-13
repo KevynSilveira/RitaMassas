@@ -17,6 +17,7 @@ import {
   serializeCustomerAddress,
   serializeCustomerPhone,
   validateCustomerPhone,
+  validateCustomerRequiredFields,
   type CustomerAddressFields,
 } from '@/lib/customerFields';
 import { useRouter } from 'expo-router';
@@ -41,7 +42,7 @@ export default function NovoClienteScreen() {
     secondaryAction?: ActionFeedbackButton;
   } | null>(null);
 
-  const phoneError = validateCustomerPhone(phone);
+  const phoneError = phone ? validateCustomerPhone(phone) : null;
 
   const closeFeedback = () => setFeedback(null);
 
@@ -56,18 +57,19 @@ export default function NovoClienteScreen() {
   };
 
   const save = async () => {
+    const validationError = validateCustomerRequiredFields(name, phone, address);
+    if (validationError) {
+      setFeedback({
+        title: validationError.title,
+        message: validationError.message,
+        secondaryAction: {
+          label: 'OK',
+        },
+      });
+      return;
+    }
+
     const trimmedName = name.trim();
-
-    if (!trimmedName) {
-      Alert.alert('Nome', 'Informe o nome do cliente.');
-      return;
-    }
-
-    if (phoneError) {
-      Alert.alert('Telefone', phoneError);
-      return;
-    }
-
     setSaving(true);
     try {
       const customerId = await insertCustomer({
@@ -91,7 +93,13 @@ export default function NovoClienteScreen() {
       });
     } catch (error) {
       console.error(error);
-      Alert.alert('Erro', 'Nao foi possivel salvar o cliente.');
+      setFeedback({
+        title: 'Erro',
+        message: 'Nao foi possivel salvar o cliente.',
+        secondaryAction: {
+          label: 'OK',
+        },
+      });
     } finally {
       setSaving(false);
     }
