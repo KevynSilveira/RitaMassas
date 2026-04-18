@@ -46,6 +46,25 @@ function capitalizeMonthLabel(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function getOrderMassTotal(
+  list: Awaited<ReturnType<typeof ordersForCalendarMonth>>
+) {
+  return list.reduce(
+    (sum, order) =>
+      sum +
+      order.items.reduce((itemsTotal, item) => itemsTotal + item.quantity, 0),
+    0
+  );
+}
+
+function formatMetricValue(value: number) {
+  if (Number.isInteger(value)) return String(value);
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 export default function AgendaScreen() {
   const { tick } = useDataRefresh();
   const { isDesktop } = useResponsive();
@@ -110,6 +129,11 @@ export default function AgendaScreen() {
   );
   const todayKey = toDayKey(new Date());
   const selectedOrders = selectedDayKey ? byDay.get(selectedDayKey) ?? [] : orders;
+  const monthMassTotal = useMemo(() => getOrderMassTotal(orders), [orders]);
+  const selectedMassTotal = useMemo(
+    () => getOrderMassTotal(selectedOrders),
+    [selectedOrders]
+  );
   const selectedPeriodTitle = selectedDayKey
     ? `Entregas em ${formatDayLabel(selectedDayKey)}`
     : `Pedidos de ${monthLabel}`;
@@ -120,11 +144,13 @@ export default function AgendaScreen() {
   const summaryLabels = isDesktop
     ? {
         orders: 'Pedidos no mes',
+        masses: 'Massas no mes',
         days: 'Dias com entrega',
         period: 'Periodo atual',
       }
     : {
         orders: 'Pedidos',
+        masses: 'Massas',
         days: 'Dias',
         period: 'Periodo',
       };
@@ -178,6 +204,17 @@ export default function AgendaScreen() {
             {summaryLabels.orders}
           </Text>
           <Text style={styles.summaryValue}>{orders.length}</Text>
+        </View>
+
+        <View
+          style={[
+            styles.summaryCard,
+            isDesktop ? styles.summaryCardDesktop : styles.summaryCardMobile,
+          ]}>
+          <Text style={styles.summaryLabel} numberOfLines={1}>
+            {summaryLabels.masses}
+          </Text>
+          <Text style={styles.summaryValue}>{formatMetricValue(monthMassTotal)}</Text>
         </View>
 
         <View
@@ -310,9 +347,26 @@ export default function AgendaScreen() {
           <Text style={styles.panelHint}>{selectedPeriodHint}</Text>
         </View>
 
-        <View style={styles.periodBadge}>
-          <Text style={styles.periodBadgeValue}>{selectedOrders.length}</Text>
-          <Text style={styles.periodBadgeLabel}>pedidos</Text>
+        <View style={[styles.periodStats, isDesktop && styles.periodStatsDesktop]}>
+          <View
+            style={[
+              styles.periodBadge,
+              isDesktop ? styles.periodBadgeDesktop : styles.periodBadgeMobile,
+            ]}>
+            <Text style={styles.periodBadgeValue}>{selectedOrders.length}</Text>
+            <Text style={styles.periodBadgeLabel}>pedidos</Text>
+          </View>
+
+          <View
+            style={[
+              styles.periodBadge,
+              isDesktop ? styles.periodBadgeDesktop : styles.periodBadgeMobile,
+            ]}>
+            <Text style={styles.periodBadgeValue}>
+              {formatMetricValue(selectedMassTotal)}
+            </Text>
+            <Text style={styles.periodBadgeLabel}>massas</Text>
+          </View>
         </View>
       </View>
 
@@ -513,15 +567,15 @@ const styles = StyleSheet.create({
   },
   summaryStrip: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
     gap: theme.space.sm,
     marginTop: theme.space.md,
   },
   summaryStripDesktop: {
     gap: theme.space.md,
+    flexWrap: 'nowrap',
   },
   summaryCard: {
-    flex: 1,
     minWidth: 0,
     borderRadius: theme.radius.md,
     borderWidth: 1,
@@ -530,9 +584,12 @@ const styles = StyleSheet.create({
     padding: theme.space.md,
   },
   summaryCardDesktop: {
+    flex: 1,
     minHeight: 88,
   },
   summaryCardMobile: {
+    width: '48%',
+    flexGrow: 1,
     paddingHorizontal: theme.space.sm,
     paddingVertical: theme.space.sm,
   },
@@ -706,6 +763,15 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  periodStats: {
+    flexDirection: 'row',
+    gap: theme.space.sm,
+  },
+  periodStatsDesktop: {
+    flexDirection: 'column',
+    alignSelf: 'flex-start',
+    width: 88,
+  },
   ordersTitle: {
     marginTop: 6,
     fontSize: 22,
@@ -722,6 +788,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     alignItems: 'center',
+  },
+  periodBadgeDesktop: {
+    width: '100%',
+  },
+  periodBadgeMobile: {
+    flex: 1,
+    minWidth: 0,
   },
   periodBadgeValue: {
     fontSize: 20,
